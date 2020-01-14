@@ -15,7 +15,11 @@ import edu.wpi.first.hal.FRCNetComm.tInstances;
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
 import edu.wpi.first.wpilibj.Sendable;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
+import edu.wpi.first.wpilibj.controller.RamseteController;
 import edu.wpi.first.wpilibj.drive.RobotDriveBase;
+import edu.wpi.first.wpilibj.geometry.Pose2d;
+import edu.wpi.first.wpilibj.kinematics.DifferentialDriveKinematics;
+import edu.wpi.first.wpilibj.kinematics.DifferentialDriveOdometry;
 import edu.wpi.first.wpilibj.smartdashboard.SendableBuilder;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SendableRegistry;
@@ -23,22 +27,36 @@ import edu.wpi.first.wpiutil.math.MathUtil;
 
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.TalonFX;
-import com.ctre.phoenix.motorcontrol.can.TalonFXConfiguration; 
+import com.ctre.phoenix.motorcontrol.can.TalonFXConfiguration;
+import com.ctre.phoenix.motorcontrol.can.TalonSRX;
+import com.ctre.phoenix.motorcontrol.can.TalonSRXConfiguration; 
 
 /**
  * Add your docs here.
  */
 public class drivetrain extends RobotDriveBase implements Sendable, AutoCloseable {
     
-    private TalonFX m_left_front = new TalonFX(RobotMap.DRIVE_LEFT_FRONT);
-    private TalonFX m_left_middle = new TalonFX(RobotMap.DRIVE_LEFT_MIDDLE);
-    private TalonFX m_left_back = new TalonFX(RobotMap.DRIVE_LEFT_BACK);
+    private static drivetrain instance;
+    public static drivetrain getInstance(){
+        if (instance == null)
+            instance = new drivetrain();
+        return instance;
+    }
 
-    private TalonFX m_right_front = new TalonFX(RobotMap.DRIVE_RIGHT_FRONT);
-    private TalonFX m_right_middle = new TalonFX(RobotMap.DRIVE_RIGHT_MIDDLE);
-    private TalonFX m_right_back = new TalonFX(RobotMap.DRIVE_RIGHT_BACK);
+    private TalonSRX m_left_front = new TalonSRX(RobotMap.DRIVE_LEFT_FRONT);
+    private TalonSRX m_left_middle = new TalonSRX(RobotMap.DRIVE_LEFT_MIDDLE);
+    private TalonSRX m_left_back = new TalonSRX(RobotMap.DRIVE_LEFT_BACK);
 
-    private  static drivetrain m_driveTrain = new drivetrain();// = new drivetrain(m_left_front, m_right_front);
+    private TalonSRX m_right_front = new TalonSRX(RobotMap.DRIVE_RIGHT_FRONT);
+    private TalonSRX m_right_middle = new TalonSRX(RobotMap.DRIVE_RIGHT_MIDDLE);
+    private TalonSRX m_right_back = new TalonSRX(RobotMap.DRIVE_RIGHT_BACK);
+
+    private DifferentialDriveKinematics mKinematics;
+    private DifferentialDriveOdometry mOdometry;
+
+    private Pose2d mRobotPose;
+    
+    private RamseteController mRamsete;
 
     public static final double kDefaultQuickStopThreshold = 0.2;
     public static final double kDefaultQuickStopAlpha = 0.1;
@@ -61,12 +79,8 @@ public class drivetrain extends RobotDriveBase implements Sendable, AutoCloseabl
         
     }
 
-    public static drivetrain getInstance() {
-        return m_driveTrain;
-    }
-
     private void configAllMotors() {
-        TalonFXConfiguration config = new TalonFXConfiguration();
+        TalonSRXConfiguration config = new TalonSRXConfiguration();
         config.forwardSoftLimitEnable = false;
         config.reverseSoftLimitEnable = false;
         config.neutralDeadband = 0.01;
@@ -108,6 +122,7 @@ public class drivetrain extends RobotDriveBase implements Sendable, AutoCloseabl
                 break;
             case "curvature":
                 curvatureDrive(jy, jx * ROTATION_SCALE, Robot.driveController.getStickButton(Hand.kRight));
+                break;
             default:
                 break;
         }
@@ -268,12 +283,12 @@ public class drivetrain extends RobotDriveBase implements Sendable, AutoCloseabl
 
     @Override
     public void stopMotor() {
-        m_left_front.set(ControlMode.PercentOutput, 0);
-        m_left_middle.set(ControlMode.PercentOutput, 0);
-        m_left_back.set(ControlMode.PercentOutput, 0);
-        m_right_front.set(ControlMode.PercentOutput, 0);
-        m_right_middle.set(ControlMode.PercentOutput, 0);
-        m_right_back.set(ControlMode.PercentOutput, 0);
+        m_left_front.neutralOutput();
+        m_left_middle.neutralOutput();
+        m_left_back.neutralOutput();
+        m_right_front.neutralOutput();
+        m_right_middle.neutralOutput();
+        m_right_back.neutralOutput();
         feed();
     }
 
